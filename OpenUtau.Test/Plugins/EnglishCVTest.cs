@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using OpenUtau.Api;
 using OpenUtau.Core.Ustx;
@@ -10,13 +11,18 @@ namespace OpenUtau.Plugins {
     public class EnglishCVPhonemizerTest {
         private sealed class Singer : USinger {
             private readonly Dictionary<string, UOto> entries;
+            private readonly string location;
 
-            public Singer(params string[] aliases) {
+            public Singer(params string[] aliases) : this(string.Empty, aliases) { }
+
+            public Singer(string location, params string[] aliases) {
+                this.location = location;
                 entries = aliases.ToDictionary(
                     alias => alias, UOto.OfDummy, StringComparer.OrdinalIgnoreCase);
             }
 
             public override IList<UOto> Otos => entries.Values.ToArray();
+            public override string Location => location;
 
             public override bool TryGetMappedOto(string phoneme, int tone,
                 string color, out UOto oto) {
@@ -85,6 +91,36 @@ namespace OpenUtau.Plugins {
                 null, null, null, null, Array.Empty<Phonemizer.Note>());
             Assert.Equal(new[] { 0, 240 },
                 result.phonemes.Select(p => p.position));
+        }
+
+        [Theory]
+        [InlineData("mystery=mee")]
+        [InlineData("mystery=m iy")]
+        [InlineData("mystery=arpabet: m iy")]
+        public void ReadableAndLegacyPronunciationsMatchEnglishWords(string entry) {
+            string folder = Path.Combine(Path.GetTempPath(), "english-cv-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try {
+                File.WriteAllText(Path.Combine(folder, "english-cv-aliases.txt"), entry);
+                var phonemizer = new EnglishCVPhonemizer();
+                phonemizer.SetSinger(new Singer(folder, "mystery"));
+                var result = phonemizer.Process(new[] { Note("me") }, null, null,
+                    null, null, Array.Empty<Phonemizer.Note>());
+                Assert.Equal("mystery", Assert.Single(result.phonemes).phoneme);
+                Assert.Null(result.phonemes[0].error);
+            } finally {
+                Directory.Delete(folder, true);
+            }
+        }
+
+        [Fact]
+        public void UnknownAltIsNotSubstitutedForNormalSound() {
+            var phonemizer = new EnglishCVPhonemizer();
+            phonemizer.SetSinger(new Singer("me_alt"));
+            var result = phonemizer.Process(new[] { Note("me") }, null, null,
+                null, null, Array.Empty<Phonemizer.Note>());
+            Assert.Equal("me", Assert.Single(result.phonemes).phoneme);
+            Assert.NotNull(result.phonemes[0].error);
         }
 
         [Fact]

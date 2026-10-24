@@ -23,8 +23,24 @@ namespace OpenUtau.Plugin.Builtin {
                 ["he"] = new[] { "hh", "iy" },
                 ["he_alt"] = new[] { "hh", "eh" },
                 ["me"] = new[] { "m", "iy" },
-                ["me_alt"] = new[] { "m", "eh" },
                 ["lo"] = new[] { "l", "ow" },
+            };
+
+        private static readonly Dictionary<string, string[]> ReadableSounds =
+            new(StringComparer.OrdinalIgnoreCase) {
+                ["ay"] = new[] { "ey" },
+                ["ah"] = new[] { "aa" },
+                ["ee"] = new[] { "iy" },
+                ["eh"] = new[] { "eh" },
+                ["ih"] = new[] { "ih" },
+                ["oh"] = new[] { "ow" },
+                ["oo"] = new[] { "uw" },
+                ["uh"] = new[] { "ah" },
+                ["eye"] = new[] { "ay" },
+                ["hee"] = new[] { "hh", "iy" },
+                ["heh"] = new[] { "hh", "eh" },
+                ["mee"] = new[] { "m", "iy" },
+                ["low"] = new[] { "l", "ow" },
             };
 
         private readonly Dictionary<string, string[]> words =
@@ -57,11 +73,11 @@ namespace OpenUtau.Plugin.Builtin {
             }
 
             LoadEntries(Path.Combine(PluginDir, "english-cv-words.txt"), words);
-            LoadEntries(Path.Combine(PluginDir, "english-cv-aliases.txt"), sounds);
+            LoadSoundEntries(Path.Combine(PluginDir, "english-cv-aliases.txt"));
 
             if (!string.IsNullOrWhiteSpace(singer?.Location)) {
                 LoadEntries(Path.Combine(singer.Location, "english-cv-words.txt"), words);
-                LoadEntries(Path.Combine(singer.Location, "english-cv-aliases.txt"), sounds);
+                LoadSoundEntries(Path.Combine(singer.Location, "english-cv-aliases.txt"));
             }
 
             if (singer == null) {
@@ -117,6 +133,64 @@ namespace OpenUtau.Plugin.Builtin {
             } catch (Exception e) {
                 Log.Error(e, "Failed to load English CV dictionary {Path}.", path);
             }
+        }
+
+        private void LoadSoundEntries(string path) {
+            if (!File.Exists(path)) {
+                return;
+            }
+            try {
+                foreach (string raw in File.ReadLines(path)) {
+                    string line = raw.Trim();
+                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal)) {
+                        continue;
+                    }
+                    int equals = line.IndexOf('=');
+                    if (equals <= 0 || equals == line.Length - 1) {
+                        continue;
+                    }
+                    string name = line.Substring(0, equals).Trim();
+                    if (name.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)) {
+                        name = name.Substring(0, name.Length - 4);
+                    }
+                    string pronunciation = line.Substring(equals + 1).Split('#')[0].Trim();
+                    if (name.Length == 0 || pronunciation.Length == 0) {
+                        continue;
+                    }
+                    string[]? phones = ResolvePronunciation(pronunciation);
+                    if (phones != null && phones.Length > 0) {
+                        sounds[name] = phones;
+                    } else {
+                        Log.Warning("Invalid English CV pronunciation {Pronunciation} for {Alias} in {Path}.",
+                            pronunciation, name, path);
+                    }
+                }
+            } catch (Exception e) {
+                Log.Error(e, "Failed to load English CV pronunciations from {Path}.", path);
+            }
+        }
+
+        private string[]? ResolvePronunciation(string pronunciation) {
+            if (g2p == null) {
+                return null;
+            }
+
+            bool explicitArpabet = pronunciation.StartsWith("arpabet:", StringComparison.OrdinalIgnoreCase);
+            string spelling = explicitArpabet
+                ? pronunciation.Substring("arpabet:".Length).Trim()
+                : pronunciation.Trim();
+
+            string[] symbols = spelling.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (symbols.Length == 0) {
+                return null;
+            }
+            if (explicitArpabet || symbols.All(g2p.IsValidSymbol)) {
+                return symbols.All(g2p.IsValidSymbol) ? symbols : null;
+            }
+            if (ReadableSounds.TryGetValue(spelling, out var known)) {
+                return known;
+            }
+            return spelling.Contains(' ') ? null : GetPhones(spelling);
         }
 
         private static string StripPrefix(string alias) {
