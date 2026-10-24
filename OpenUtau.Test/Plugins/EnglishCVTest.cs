@@ -115,19 +115,22 @@ namespace OpenUtau.Plugins {
         }
 
         [Fact]
-        public void ReadableAyAndAhMeanLetterAAndOpenA() {
+        public void BareArpabetVowelsAreNotEnglishRespellings() {
             string folder = Path.Combine(Path.GetTempPath(), "english-cv-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
             try {
                 File.WriteAllText(Path.Combine(folder, "english-cv-aliases.txt"),
-                    "long_vowel=ay\nopen_vowel=ah\n");
+                    "eye_sound=ay\nreduced_sound=ah\nletter_a=english:ay\nopen_a=english:ah\n");
                 var phonemizer = new EnglishCVPhonemizer();
-                phonemizer.SetSinger(new Singer(folder, "long_vowel", "open_vowel"));
+                phonemizer.SetSinger(new Singer(folder,
+                    "eye_sound", "reduced_sound", "letter_a", "open_a"));
                 var field = typeof(EnglishCVPhonemizer).GetField("sounds",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 var sounds = (Dictionary<string, string[]>)field!.GetValue(phonemizer)!;
-                Assert.Equal(new[] { "ey" }, sounds["long_vowel"]);
-                Assert.Equal(new[] { "aa" }, sounds["open_vowel"]);
+                Assert.Equal(new[] { "ay" }, sounds["eye_sound"]);
+                Assert.Equal(new[] { "ah" }, sounds["reduced_sound"]);
+                Assert.Equal(new[] { "ey" }, sounds["letter_a"]);
+                Assert.Equal(new[] { "aa" }, sounds["open_a"]);
             } finally {
                 Directory.Delete(folder, true);
             }

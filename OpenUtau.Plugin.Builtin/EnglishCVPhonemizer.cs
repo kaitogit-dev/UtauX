@@ -176,22 +176,22 @@ namespace OpenUtau.Plugin.Builtin {
             }
 
             bool explicitArpabet = pronunciation.StartsWith("arpabet:", StringComparison.OrdinalIgnoreCase);
+            bool explicitEnglish = pronunciation.StartsWith("english:", StringComparison.OrdinalIgnoreCase);
             string spelling = explicitArpabet
                 ? pronunciation.Substring("arpabet:".Length).Trim()
-                : pronunciation.Trim();
+                : explicitEnglish
+                    ? pronunciation.Substring("english:".Length).Trim()
+                    : pronunciation.Trim();
 
             string[] symbols = spelling.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             if (symbols.Length == 0) {
                 return null;
             }
-            if (explicitArpabet) {
+            if (explicitArpabet || (!explicitEnglish && symbols.All(g2p.IsValidSymbol))) {
                 return symbols.All(g2p.IsValidSymbol) ? symbols : null;
             }
             if (ReadableSounds.TryGetValue(spelling, out var known)) {
                 return known;
-            }
-            if (symbols.All(g2p.IsValidSymbol)) {
-                return symbols;
             }
             return spelling.Contains(' ') ? null : GetPhones(spelling);
         }
