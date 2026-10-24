@@ -184,11 +184,14 @@ namespace OpenUtau.Plugin.Builtin {
             if (symbols.Length == 0) {
                 return null;
             }
-            if (explicitArpabet || symbols.All(g2p.IsValidSymbol)) {
+            if (explicitArpabet) {
                 return symbols.All(g2p.IsValidSymbol) ? symbols : null;
             }
             if (ReadableSounds.TryGetValue(spelling, out var known)) {
                 return known;
+            }
+            if (symbols.All(g2p.IsValidSymbol)) {
+                return symbols;
             }
             return spelling.Contains(' ') ? null : GetPhones(spelling);
         }

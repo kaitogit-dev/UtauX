@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using OpenUtau.Api;
 using OpenUtau.Core.Ustx;
 using OpenUtau.Plugin.Builtin;
@@ -108,6 +109,25 @@ namespace OpenUtau.Plugins {
                     null, null, Array.Empty<Phonemizer.Note>());
                 Assert.Equal("mystery", Assert.Single(result.phonemes).phoneme);
                 Assert.Null(result.phonemes[0].error);
+            } finally {
+                Directory.Delete(folder, true);
+            }
+        }
+
+        [Fact]
+        public void ReadableAyAndAhMeanLetterAAndOpenA() {
+            string folder = Path.Combine(Path.GetTempPath(), "english-cv-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try {
+                File.WriteAllText(Path.Combine(folder, "english-cv-aliases.txt"),
+                    "long_vowel=ay\nopen_vowel=ah\n");
+                var phonemizer = new EnglishCVPhonemizer();
+                phonemizer.SetSinger(new Singer(folder, "long_vowel", "open_vowel"));
+                var field = typeof(EnglishCVPhonemizer).GetField("sounds",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                var sounds = (Dictionary<string, string[]>)field!.GetValue(phonemizer)!;
+                Assert.Equal(new[] { "ey" }, sounds["long_vowel"]);
+                Assert.Equal(new[] { "aa" }, sounds["open_vowel"]);
             } finally {
                 Directory.Delete(folder, true);
             }
