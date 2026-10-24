@@ -146,6 +146,16 @@ jobs:
       - name: Test
         run: dotnet run --project OpenUtau.Test/OpenUtau.Test.csproj
 
+      - name: Build English CV plugin
+        if: ${{ matrix.arch.name == 'win-x64' }}
+        run: dotnet build OpenUtau.Plugin.EnglishCV/OpenUtau.Plugin.EnglishCV.csproj -c Release -o english-cv-package
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ matrix.arch.name == 'win-x64' }}
+        with:
+          name: EnglishCV.Phonemizer.dll
+          path: english-cv-package/EnglishCV.Phonemizer.dll
+
       # Build
       - name: Restore
         run: dotnet restore OpenUtau -r ${{ matrix.arch.rid }}
@@ -314,6 +324,10 @@ jobs:
         with:
           name: OpenUtau-linux-arm64.AppImage
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: EnglishCV.Phonemizer.dll
+
       # Appcast
       - name: Appcast
         run: |
@@ -342,6 +356,7 @@ jobs:
             OpenUtau-*.dmg
             OpenUtau-*.tar.gz
             OpenUtau-*.AppImage
+            EnglishCV.Phonemizer.dll
           body: |
             See [Getting Started](https://github.com/stakira/OpenUtau/wiki/Getting-Started) for how to use.
 

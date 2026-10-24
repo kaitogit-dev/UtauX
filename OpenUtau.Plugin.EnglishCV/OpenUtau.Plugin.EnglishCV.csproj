@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>EnglishCV.Phonemizer</AssemblyName>
+    <RootNamespace>OpenUtau.Plugin.Builtin</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>enable</Nullable>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\OpenUtau.Plugin.Builtin\EnglishCVPhonemizer.cs" Link="EnglishCVPhonemizer.cs" />
+    <ProjectReference Include="..\OpenUtau.Core\OpenUtau.Core.csproj" />
+  </ItemGroup>
+</Project>
