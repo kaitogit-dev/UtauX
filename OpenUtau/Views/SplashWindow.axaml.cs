@@ -55,18 +55,18 @@ namespace OpenUtau.App.Views {
             var mainThread = Thread.CurrentThread;
             var mainScheduler = TaskScheduler.FromCurrentSynchronizationContext();
             Task.Run(() => {
-                Log.Information("Initializing OpenUtau.");
+                Log.Information("Initializing UtauX.");
                 ToolsManager.Inst.Initialize();
                 // Before the singer search, so the warnings it raises can be published.
                 DocManager.Inst.Initialize(mainThread, mainScheduler);
                 DocManager.Inst.PostOnUIThread = action => Avalonia.Threading.Dispatcher.UIThread.Post(action);
                 SingerManager.Inst.Initialize();
-                Log.Information("Initialized OpenUtau.");
+                Log.Information("Initialized UtauX.");
                 InitAudio();
             }).ContinueWith(t => {
                 if (t.IsFaulted) {
                     Log.Error(t.Exception?.Flatten(), "Failed to Start.");
-                    MessageBox.ShowError(this, t.Exception, "Failed to Start OpenUtau").ContinueWith(t1 => { Close(); });
+                    MessageBox.ShowError(this, t.Exception, "Failed to Start UtauX").ContinueWith(t1 => { Close(); });
                     return;
                 }
                 if (App.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {

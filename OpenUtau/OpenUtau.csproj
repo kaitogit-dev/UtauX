@@ -7,6 +7,8 @@
   </PropertyGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <Product>UtauX</Product>
+    <AssemblyTitle>UtauX</AssemblyTitle>
     <SatelliteResourceLanguages>none</SatelliteResourceLanguages>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -17,9 +19,9 @@
     <StartupObject />
   </PropertyGroup>
   <PropertyGroup>
-    <CFBundleName>OpenUtau</CFBundleName>
-    <CFBundleDisplayName>OpenUtau</CFBundleDisplayName>
-    <CFBundleIdentifier>com.stakira.openutau</CFBundleIdentifier>
+    <CFBundleName>UtauX</CFBundleName>
+    <CFBundleDisplayName>UtauX</CFBundleDisplayName>
+    <CFBundleIdentifier>dev.kaitogit.utaux</CFBundleIdentifier>
     <CFBundleVersion>0.0.0</CFBundleVersion>
     <CFBundleShortVersionString>0.0.0</CFBundleShortVersionString>
     <CFBundlePackageType>APPL</CFBundlePackageType>
@@ -32,7 +34,7 @@
         <array>
             <dict>
                 <key>CFBundleTypeName</key>
-                <string>OpenUtau Sequence File</string>
+                <string>UtauX Sequence File</string>
                 <key>CFBundleTypeExtensions</key>
                 <array>
                     <string>ustx</string>
@@ -43,7 +45,7 @@
                 <string>Editor</string>
                 <key>LSItemContentTypes</key>
                 <array>
-                    <string>com.stakira.openutau.ustx</string>
+                    <string>dev.kaitogit.utaux.ustx</string>
                 </array>
             </dict>
         </array>          
