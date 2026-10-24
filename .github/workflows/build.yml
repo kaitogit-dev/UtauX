@@ -75,8 +75,8 @@ jobs:
           EVENT: ${{ github.event_name }}
           CHANNEL: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && 'alpha' || inputs.channel }}
           VERSION: ${{ inputs.version }}
-          RELEASE: ${{ github.event_name == 'schedule' && 'true' || inputs.release }}
-          DRAFT: ${{ github.event_name == 'schedule' && 'false' || inputs.draft }}
+          RELEASE: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && 'true' || inputs.release }}
+          DRAFT: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && 'false' || inputs.draft }}
         run: |
           set -u
           # Alpha is the only auto-versioned channel; stable and beta take
@@ -175,7 +175,16 @@ jobs:
         run: |
           app="$(find bin/${{ matrix.arch.name }} -maxdepth 3 -type d -name '*.app' -print -quit)"
           test -n "$app"
-          echo "MACOS_APP=$app" >> "$GITHUB_ENV"
+          target="$(dirname "$app")/UtauX.app"
+          if [ "$app" != "$target" ]; then
+            mv "$app" "$target"
+          fi
+          if [ -f "$target/Contents/MacOS/OpenUtau" ]; then
+            mv "$target/Contents/MacOS/OpenUtau" "$target/Contents/MacOS/UtauX"
+          fi
+          test -x "$target/Contents/MacOS/UtauX"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable UtauX" "$target/Contents/Info.plist"
+          echo "MACOS_APP=$target" >> "$GITHUB_ENV"
 
       - name: Add Liquid Glass icon (macOS)
         run: |
@@ -186,6 +195,15 @@ jobs:
             OpenUtau/Assets/OpenUtau.icon \
             OpenUtau
         if: ${{ matrix.arch.os == 'osx' }}
+
+      - name: Rename Windows executable
+        if: ${{ matrix.arch.os == 'win' }}
+        shell: pwsh
+        run: Rename-Item "bin/${{ matrix.arch.name }}/OpenUtau.exe" "UtauX.exe"
+
+      - name: Rename Linux executable
+        if: ${{ matrix.arch.os == 'linux' }}
+        run: mv "bin/${{ matrix.arch.name }}/OpenUtau" "bin/${{ matrix.arch.name }}/UtauX"
 
       - name: Write release channel info
         run: "@{Channel='${{ needs.next-version.outputs.channel }}'} | ConvertTo-Json > bin/${{ matrix.arch.name }}/prefs-default.json"
@@ -202,19 +220,19 @@ jobs:
         if: ${{ matrix.arch.os == 'win' }}
 
       - name: Set executable permission
-        run: chmod +x bin/${{ matrix.arch.name }}/OpenUtau
+        run: chmod +x bin/${{ matrix.arch.name }}/UtauX
         if: ${{ matrix.arch.os == 'linux' }}
 
       - name: Zip
         run: |
           cd bin/${{ matrix.arch.name }}
-          7z a ../../OpenUtau-${{ matrix.arch.name }}.zip *
+          7z a ../../UtauX-${{ matrix.arch.name }}.zip *
         if: ${{ matrix.arch.os == 'win' }}
 
       - name: Tar.gz
         run: |
           cd bin/${{ matrix.arch.name }}
-          tar -czf ../../OpenUtau-${{ matrix.arch.name }}.tar.gz *
+          tar -czf ../../UtauX-${{ matrix.arch.name }}.tar.gz *
         if: ${{ matrix.arch.os == 'linux' }}
 
       # Create Installer
@@ -233,11 +251,9 @@ jobs:
       # Create Dmg
       - name: Create Dmg
         run: |
-          npm install -g create-dmg
           cp OpenUtau/Assets/OpenUtau.icns "$MACOS_APP/Contents/Resources/"
-          create-dmg "$MACOS_APP"
-          mv *.dmg OpenUtau-${{ matrix.arch.name }}.dmg
-          codesign -fvs - OpenUtau-${{ matrix.arch.name }}.dmg
+          hdiutil create -volname UtauX -srcfolder "$MACOS_APP" -ov -format UDZO "UtauX-${{ matrix.arch.name }}.dmg"
+          codesign -fvs - "UtauX-${{ matrix.arch.name }}.dmg"
         if: ${{ matrix.arch.os == 'osx' }}
 
       # Create Appimage
@@ -256,9 +272,7 @@ jobs:
           cp OpenUtau/Assets/AppRun bin/${{ matrix.arch.name }}
           chmod 755 bin/${{ matrix.arch.name }}/AppRun
           ARCH=${{ matrix.arch.linuxarch }} linuxdeploy --appdir bin/${{ matrix.arch.name }} --output appimage
-          # linuxdeploy names the output by linux arch (OpenUtau-x86_64.AppImage);
-          # rename to the matrix name so artifact, file, and release all match.
-          mv UtauX-${{ matrix.arch.linuxarch }}.AppImage OpenUtau-${{ matrix.arch.name }}.AppImage
+          mv UtauX-${{ matrix.arch.linuxarch }}.AppImage UtauX-${{ matrix.arch.name }}.AppImage
         if: ${{ matrix.arch.os == 'linux' }}
 
       # Always upload so successful legs keep their artifacts even when the
@@ -267,32 +281,32 @@ jobs:
       # Upload Artifacts
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenUtau-${{ matrix.arch.name }}.tar.gz
-          path: OpenUtau-${{ matrix.arch.name }}.tar.gz
+          name: UtauX-${{ matrix.arch.name }}.tar.gz
+          path: UtauX-${{ matrix.arch.name }}.tar.gz
         if: ${{ matrix.arch.os == 'linux' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenUtau-${{ matrix.arch.name }}.zip
-          path: OpenUtau-${{ matrix.arch.name }}.zip
+          name: UtauX-${{ matrix.arch.name }}.zip
+          path: UtauX-${{ matrix.arch.name }}.zip
         if: ${{ matrix.arch.os == 'win' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenUtau-${{ matrix.arch.name }}.exe
-          path: OpenUtau-${{ matrix.arch.name }}.exe
+          name: UtauX-${{ matrix.arch.name }}.exe
+          path: UtauX-${{ matrix.arch.name }}.exe
         if: ${{ matrix.arch.os == 'win' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenUtau-${{ matrix.arch.name }}.AppImage
-          path: OpenUtau-${{ matrix.arch.name }}.AppImage
+          name: UtauX-${{ matrix.arch.name }}.AppImage
+          path: UtauX-${{ matrix.arch.name }}.AppImage
         if: ${{ matrix.arch.os == 'linux' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: OpenUtau-${{ matrix.arch.name }}.dmg
-          path: OpenUtau-${{ matrix.arch.name }}.dmg
+          name: UtauX-${{ matrix.arch.name }}.dmg
+          path: UtauX-${{ matrix.arch.name }}.dmg
         if: ${{ matrix.arch.os == 'osx' }}
 
   release:
@@ -307,31 +321,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-win-x64.zip
+          name: UtauX-win-x64.zip
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-win-x64.exe
+          name: UtauX-win-x64.exe
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-win-arm64.zip
+          name: UtauX-win-arm64.zip
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-win-arm64.exe
+          name: UtauX-win-arm64.exe
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-osx-arm64.dmg
+          name: UtauX-osx-arm64.dmg
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-linux-x64.tar.gz
+          name: UtauX-linux-x64.tar.gz
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-linux-x64.AppImage
+          name: UtauX-linux-x64.AppImage
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-linux-arm64.tar.gz
+          name: UtauX-linux-arm64.tar.gz
       - uses: actions/download-artifact@v4
         with:
-          name: OpenUtau-linux-arm64.AppImage
+          name: UtauX-linux-arm64.AppImage
 
       - uses: actions/download-artifact@v4
         with:
@@ -340,15 +354,15 @@ jobs:
       # Appcast
       - name: Appcast
         run: |
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-x64 -f=OpenUtau-win-x64.zip
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-x64-installer -f=OpenUtau-win-x64.exe
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-arm64 -f=OpenUtau-win-arm64.zip
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-arm64-installer -f=OpenUtau-win-arm64.exe
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=macos -r=osx-arm64 -f=OpenUtau-osx-arm64.dmg
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-x64 -f=OpenUtau-linux-x64.tar.gz
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-arm64 -f=OpenUtau-linux-arm64.tar.gz
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-x64-appimage -f=OpenUtau-linux-x64.AppImage
-          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-arm64-appimage -f=OpenUtau-linux-arm64.AppImage
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-x64 -f=UtauX-win-x64.zip
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-x64-installer -f=UtauX-win-x64.exe
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-arm64 -f=UtauX-win-arm64.zip
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=windows -r=win-arm64-installer -f=UtauX-win-arm64.exe
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=macos -r=osx-arm64 -f=UtauX-osx-arm64.dmg
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-x64 -f=UtauX-linux-x64.tar.gz
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-arm64 -f=UtauX-linux-arm64.tar.gz
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-x64-appimage -f=UtauX-linux-x64.AppImage
+          python appcast.py -v=${{ needs.next-version.outputs.version }} --tag=${{ needs.next-version.outputs.tag }} -o=linux -r=linux-arm64-appimage -f=UtauX-linux-arm64.AppImage
 
       # Release
       - name: Release
@@ -360,16 +374,16 @@ jobs:
           draft: ${{ needs.next-version.outputs.draft }}
           files: |
             appcast.*.xml
-            OpenUtau-*.zip
-            OpenUtau-*.exe
-            OpenUtau-*.dmg
-            OpenUtau-*.tar.gz
-            OpenUtau-*.AppImage
+            UtauX-*.zip
+            UtauX-*.exe
+            UtauX-*.dmg
+            UtauX-*.tar.gz
+            UtauX-*.AppImage
             EnglishCV.Phonemizer.dll
           body: |
-            See [Getting Started](https://github.com/stakira/OpenUtau/wiki/Getting-Started) for how to use.
+            Get UtauX from [the project repository](https://github.com/kaitogit-dev/UtauX).
 
-            If you encountered issues, see [FAQ](https://github.com/stakira/OpenUtau/wiki/FAQ)
+            For issues, visit [UtauX](https://github.com/kaitogit-dev/UtauX/issues).
 
             ## macOS says "This app is damaged"
-            Open a terminal and run `xattr -rc /Applications/OpenUtau.app`. Try opening OpenUtau again.
+            Open a terminal and run `xattr -rc /Applications/UtauX.app`. Try opening UtauX again.

@@ -132,7 +132,7 @@ namespace OpenUtau.App.ViewModels {
             client.Timeout = TimeSpan.FromSeconds(30);
             // per_page=100: with frequent alpha releases, the default 30-item
             // page could push the release of the current channel off-page.
-            using var resposne = await client.GetAsync("https://api.github.com/repos/stakira/OpenUtau/releases?per_page=100");
+            using var resposne = await client.GetAsync("https://api.github.com/repos/kaitogit-dev/UtauX/releases?per_page=100");
             resposne.EnsureSuccessStatusCode();
             string respBody = await resposne.Content.ReadAsStringAsync();
             var releases = Json.Deserialize<List<GithubRelease>>(respBody);
@@ -192,7 +192,7 @@ namespace OpenUtau.App.ViewModels {
 
         public void OnGithub() {
             try {
-                OS.OpenWeb("https://github.com/stakira/OpenUtau/wiki");
+                OS.OpenWeb("https://github.com/kaitogit-dev/UtauX");
             } catch (Exception e) {
                 DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(e));
             }
