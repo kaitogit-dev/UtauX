@@ -1,4 +1,6 @@
 on:
+  push:
+    branches: [ master ]
   schedule:
     # Daily alpha build. Skipped if master has no new commits since the
     # last alpha release (see the next-version job below).
@@ -71,7 +73,7 @@ jobs:
         env:
           # Scheduled runs always build and publish an alpha release.
           EVENT: ${{ github.event_name }}
-          CHANNEL: ${{ github.event_name == 'schedule' && 'alpha' || inputs.channel }}
+          CHANNEL: ${{ (github.event_name == 'schedule' || github.event_name == 'push') && 'alpha' || inputs.channel }}
           VERSION: ${{ inputs.version }}
           RELEASE: ${{ github.event_name == 'schedule' && 'true' || inputs.release }}
           DRAFT: ${{ github.event_name == 'schedule' && 'false' || inputs.draft }}
@@ -168,12 +170,19 @@ jobs:
         run: dotnet msbuild OpenUtau -t:BundleApp -p:Configuration=Release -p:RuntimeIdentifier=${{ matrix.arch.rid }} -p:UseAppHost=true -p:SelfContained=true -p:OutputPath=../bin/${{ matrix.arch.name }}/
         if: ${{ matrix.arch.os == 'osx' }}
 
+      - name: Locate macOS app
+        if: ${{ matrix.arch.os == 'osx' }}
+        run: |
+          app="$(find bin/${{ matrix.arch.name }} -maxdepth 3 -type d -name '*.app' -print -quit)"
+          test -n "$app"
+          echo "MACOS_APP=$app" >> "$GITHUB_ENV"
+
       - name: Add Liquid Glass icon (macOS)
         run: |
           sudo xcode-select -s /Applications/Xcode_26.2.app
           chmod +x .github/scripts/add-liquid-glass-icon.sh
           .github/scripts/add-liquid-glass-icon.sh \
-            bin/${{ matrix.arch.name }}/publish/OpenUtau.app \
+            "$MACOS_APP" \
             OpenUtau/Assets/OpenUtau.icon \
             OpenUtau
         if: ${{ matrix.arch.os == 'osx' }}
@@ -225,8 +234,8 @@ jobs:
       - name: Create Dmg
         run: |
           npm install -g create-dmg
-          cp OpenUtau/Assets/OpenUtau.icns bin/${{ matrix.arch.name }}/publish/OpenUtau.app/Contents/Resources/
-          create-dmg bin/${{ matrix.arch.name }}/publish/OpenUtau.app || true
+          cp OpenUtau/Assets/OpenUtau.icns "$MACOS_APP/Contents/Resources/"
+          create-dmg "$MACOS_APP"
           mv *.dmg OpenUtau-${{ matrix.arch.name }}.dmg
           codesign -fvs - OpenUtau-${{ matrix.arch.name }}.dmg
         if: ${{ matrix.arch.os == 'osx' }}
@@ -249,7 +258,7 @@ jobs:
           ARCH=${{ matrix.arch.linuxarch }} linuxdeploy --appdir bin/${{ matrix.arch.name }} --output appimage
           # linuxdeploy names the output by linux arch (OpenUtau-x86_64.AppImage);
           # rename to the matrix name so artifact, file, and release all match.
-          mv OpenUtau-${{ matrix.arch.linuxarch }}.AppImage OpenUtau-${{ matrix.arch.name }}.AppImage
+          mv UtauX-${{ matrix.arch.linuxarch }}.AppImage OpenUtau-${{ matrix.arch.name }}.AppImage
         if: ${{ matrix.arch.os == 'linux' }}
 
       # Always upload so successful legs keep their artifacts even when the

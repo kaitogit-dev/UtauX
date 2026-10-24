@@ -9,26 +9,46 @@ on:
 jobs:
   synchronize-with-crowdin:
     runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.credentials.outputs.enabled }}
 
     steps:
+      - name: Check Crowdin credentials
+        id: credentials
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ] && [ -n "$CROWDIN_PROJECT_ID" ] && [ -n "$CROWDIN_PERSONAL_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.credentials.outputs.enabled == 'true'
         uses: actions/checkout@v4
 
       - name: git config
+        if: steps.credentials.outputs.enabled == 'true'
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
       
       - name: Sync from official repo
+        if: steps.credentials.outputs.enabled == 'true'
         run: |
           git pull --unshallow
           git remote add official https://github.com/stakira/OpenUtau
           git fetch official
           git merge --no-edit official/master
 
-      - run: ls -l OpenUtau/Strings
+      - if: steps.credentials.outputs.enabled == 'true'
+        run: ls -l OpenUtau/Strings
       
       - name: crowdin action
+        if: steps.credentials.outputs.enabled == 'true'
         uses: crowdin/github-action@v2.5.0
         with:
           upload_sources: true
@@ -49,6 +69,7 @@ jobs:
 
   sync-strings:
     needs: [synchronize-with-crowdin]
+    if: needs.synchronize-with-crowdin.outputs.enabled == 'true'
     runs-on: windows-latest
 
     steps:
