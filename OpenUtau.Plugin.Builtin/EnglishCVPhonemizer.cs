@@ -217,6 +217,31 @@ namespace OpenUtau.Plugin.Builtin {
             return alias;
         }
 
+        private static int[] GetPositions(Note[] notes, int count) {
+            int duration = Math.Max(1, notes[^1].position + notes[^1].duration - notes[0].position);
+            int[] positions = Enumerable.Range(0, count)
+                .Select(i => (int)((long)duration * i / count)).ToArray();
+
+            var anchors = new List<int> { 0 };
+            for (int i = 1; i < notes.Length && anchors.Count < count; i++) {
+                if (notes[i].lyric?.Trim() == "+") {
+                    anchors.Add(Math.Clamp(notes[i].position - notes[0].position, 0, duration));
+                }
+            }
+
+            if (anchors.Count > 1) {
+                int last = anchors.Count - 1;
+                for (int i = 0; i <= last; i++) {
+                    positions[i] = anchors[i];
+                }
+                for (int i = last + 1; i < count; i++) {
+                    positions[i] = anchors[last] +
+                        (int)((long)(duration - anchors[last]) * (i - last) / (count - last));
+                }
+            }
+            return positions;
+        }
+
         public override Result Process(Note[] notes, Note? prev, Note? next,
             Note? prevNeighbour, Note? nextNeighbour, Note[] prevs) {
             if (notes.Length == 0) {
@@ -248,14 +273,13 @@ namespace OpenUtau.Plugin.Builtin {
                 return MakeSimpleResult(lyric);
             }
 
-            int end = notes[^1].position + notes[^1].duration;
-            int duration = Math.Max(1, end - note.position);
+            int[] positions = GetPositions(notes, aliases.Length);
             var phonemes = new Phoneme[aliases.Length];
 
             for (int i = 0; i < aliases.Length; i++) {
                 PhonemeAttributes attr = note.phonemeAttributes?
                     .FirstOrDefault(a => a.index == i) ?? default;
-                int position = (int)((long)duration * i / aliases.Length);
+                int position = positions[i];
                 bool atStart = i == 0 && !prevNeighbour.HasValue;
                 string alias = ChooseOto(aliases[i], atStart, note, attr, out bool found);
                 phonemes[i] = new Phoneme {

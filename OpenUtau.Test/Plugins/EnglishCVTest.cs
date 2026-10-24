@@ -77,6 +77,17 @@ namespace OpenUtau.Plugins {
         }
 
         [Fact]
+        public void ExtraExtenderSustainsLastSyllable() {
+            var phonemizer = new EnglishCVPhonemizer();
+            phonemizer.SetSinger(new Singer("he_alt", "lo"));
+            var result = phonemizer.Process(
+                new[] { Note("hello"), Note("+", 240), Note("+", 480) },
+                null, null, null, null, Array.Empty<Phonemizer.Note>());
+            Assert.Equal(new[] { 0, 240 },
+                result.phonemes.Select(p => p.position));
+        }
+
+        [Fact]
         public void HintOverridesWordDictionary() {
             var phonemizer = new EnglishCVPhonemizer();
             phonemizer.SetSinger(new Singer("he", "lo"));
