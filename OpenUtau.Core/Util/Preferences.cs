@@ -118,7 +118,11 @@ namespace OpenUtau.Core.Util {
                     }
                     if (!new[] { "stable", "beta", "alpha" }.Contains(Default.Channel)) Default.Channel = "stable";
                     if (Default.DefaultRenderer == "Classic") Default.DefaultRenderer = Renderers.CLASSIC;
-                    if (!Renderers.getRendererOptions().Contains(Default.DefaultRenderer)) Default.DefaultRenderer = string.Empty;
+                    if (!Renderers.getRendererOptions().Contains(Default.DefaultRenderer)) Default.DefaultRenderer = Renderers.CLASSIC;
+                    Default.DefaultResamplers ??= new Dictionary<string, string>();
+                    Default.DefaultWavtools ??= new Dictionary<string, string>();
+                    Default.DefaultResamplers.TryAdd(Renderers.CLASSIC, "moresampler.exe");
+                    Default.DefaultWavtools.TryAdd(Renderers.CLASSIC, "moresampler.exe");
                     if (!Onnx.getRunnerOptions().Contains(Default.OnnxRunner)) Default.OnnxRunner = string.Empty;
                     if (OS.IsWindows()) Default.WinePath = string.Empty;
                     if (Default.Theme != null) {
