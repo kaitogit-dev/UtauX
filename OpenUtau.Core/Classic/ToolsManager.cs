@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using OpenUtau.Core;
 using OpenUtau.Core.Util;
@@ -63,8 +64,73 @@ namespace OpenUtau.Classic {
 
         public void Initialize() {
             lock (_locker) {
+                InstallMoresampler();
                 SearchResamplers();
                 SearchWavtools();
+            }
+        }
+
+        private static void InstallMoresampler() {
+            if (!OS.IsWindows() && string.IsNullOrEmpty(Preferences.Default.WinePath)) {
+                return;
+            }
+
+            var paths = PathManager.Inst;
+            string resampler = Path.Combine(paths.ResamplersPath, "moresampler.exe");
+            string wavtool = Path.Combine(paths.WavtoolsPath, "moresampler.exe");
+            if (File.Exists(resampler) && File.Exists(wavtool)) {
+                return;
+            }
+
+            string previousData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Personal), "OpenUtau");
+            string[] candidates = {
+                resampler,
+                wavtool,
+                Path.Combine(paths.DataPath, "moresampler.exe"),
+                Path.Combine(paths.RootPath, "moresampler.exe"),
+                Path.Combine(previousData, "Resamplers", "moresampler.exe"),
+                Path.Combine(previousData, "Wavtools", "moresampler.exe"),
+            };
+
+            try {
+                string? source = candidates.FirstOrDefault(File.Exists);
+                if (source != null) {
+                    foreach (string target in new[] { resampler, wavtool }) {
+                        if (!File.Exists(target)) {
+                            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                            File.Copy(source, target);
+                        }
+                    }
+                    return;
+                }
+
+                string[] archives = {
+                    Path.Combine(paths.DataPath, "moresampler.zip"),
+                    Path.Combine(paths.RootPath, "moresampler.zip"),
+                };
+                string? archivePath = archives.FirstOrDefault(File.Exists);
+                if (archivePath == null) {
+                    return;
+                }
+
+                using var archive = ZipFile.OpenRead(archivePath);
+                var executable = archive.Entries.FirstOrDefault(entry =>
+                    string.Equals(Path.GetFileName(entry.FullName), "moresampler.exe",
+                        StringComparison.OrdinalIgnoreCase)
+                    && entry.Length > 0 && entry.Length <= 32 * 1024 * 1024);
+                if (executable == null) {
+                    return;
+                }
+
+                foreach (string target in new[] { resampler, wavtool }) {
+                    if (!File.Exists(target)) {
+                        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                        executable.ExtractToFile(target);
+                    }
+                }
+            } catch (Exception e) {
+                Log.Error(e, "Failed to install moresampler.");
             }
         }
 
