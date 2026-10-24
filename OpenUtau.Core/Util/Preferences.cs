@@ -179,7 +179,7 @@ namespace OpenUtau.Core.Util {
             public bool ClearCacheOnQuit = false;
             public bool PreRender = true;
             public int NumRenderThreads = 2;
-            public string DefaultRenderer = string.Empty;
+            public string DefaultRenderer = Renderers.CLASSIC;
             public int WorldlineR = 0;
             public string OnnxRunner = string.Empty;
             public int OnnxGpu = 0;
@@ -246,8 +246,8 @@ namespace OpenUtau.Core.Util {
             public bool ShowExpressions = true;
             public bool ShowPhonemizerTags = true;
             public bool ShowNoteParams = true;
-            public Dictionary<string, string> DefaultResamplers = new Dictionary<string, string>();
-            public Dictionary<string, string> DefaultWavtools = new Dictionary<string, string>();
+            public Dictionary<string, string> DefaultResamplers = new Dictionary<string, string> { [Renderers.CLASSIC] = "moresampler.exe" };
+            public Dictionary<string, string> DefaultWavtools = new Dictionary<string, string> { [Renderers.CLASSIC] = "moresampler.exe" };
             public string LyricHelper = string.Empty;
             public bool LyricsHelperBrackets = false;
             public int OtoEditor = 0;
